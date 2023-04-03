@@ -1,3 +1,0 @@
-import moncue.Nkon_page_html as ConstN
-
-print(ConstN.ConstClassPage_principal.GET_CONTENANT_LIST_PRODUIT)
