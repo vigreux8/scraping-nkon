@@ -1,29 +1,38 @@
-from constante.constante_scrapeur import (
-    PatchFile,
-    ConstClassPage_principal,
-    ConstClassPage_produit,
-    ConstUrl
-    )
+from constante.constante import (
+    get_PatchFile,
+    get_ConstClassPage_principal,
+    get_ConstClassPage_produit,
+    get_ConstUrl,
+    get_Parametre_par_defaut,
+    get_SpecBatterie)
 from os import path,listdir
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 from math import ceil
+import streamlit as st
+
+
+
 class FonctionsScrapeur():
     def __init__(self) -> None:
-        self.CONSTANTE_PAGE_PRODUIT = ConstClassPage_produit
-        self.CONSTANTE_PAGE_PRINCIPAL = ConstClassPage_principal
-        self.CONSTANTE_URL = ConstUrl
+        self.CONSTANTE_PAGE_PRODUIT = get_ConstClassPage_produit
+        self.CONSTANTE_PAGE_PRINCIPAL = get_ConstClassPage_principal
+        self.CONSTANTE_URL = get_ConstUrl
         
     
     
 class gestion_de_fichier:
     def __init__(self) -> None:
-        self.patch = path.join("fichier_sortie")
         self.nom_present_dossier_exporter = self.init_recuperation_list_fichier()
+        self.fichier_present_exporter = self.init_recuperation_list_fichier()
+        
         
     def init_recuperation_list_fichier(self):
-       return listdir("exporter")
+        listdir(get_Parametre_par_defaut.D_EXPORTATION)
+        
+    def Patch_constructeur(self):
+        path.join(get_Parametre_par_defaut.D_EXPORTATION,self.fichier_present_exporter)
         
 
 class RunScrapingNkon():
@@ -173,30 +182,33 @@ class RunScrapingNkon():
         self.tableaux_cellule.to_csv()
         self.export_csv()
 
-
 class NkonEnrichissementData:
     def __init__(self) -> None:
-        self.index_prix_quantiter_int = []
-        self.dataframe = pd.read_csv(PatchFile.cellule_18650)
-        self.choix_voltage = 48
-        self.choix_capaciter_w = 1200
-        self.choix_courant_Decharge_max = 30
         self.choix_amperage_batterie = None
-        self.calcule_amperage_batterie()
-        self.conv_col_str_to_int()
-        VOLTAGE_NOMINAL = 3,6
+        self.index_ligne = []
+        self.index_reduction_on =[]
+        self.index_prix_quantiter_int = []
+        self.dataframe = pd.read_csv(get_PatchFile.cellule_18650)
+        self.choix_voltage = st.slider("voltage",round(get_SpecBatterie.VOLTAGE_NOMINAL),200,on_change=self.run_enrichissement_dataframe,value=get_Parametre_par_defaut.elec_VOLTAGE)
+        self.choix_capaciter_w = st.slider("watt",0,5000,value=get_Parametre_par_defaut.elec_PUISSANCE,on_change=self.run_enrichissement_dataframe)
+        self.limite_surface_cm_carres = st.text_input("limite en cm²")
+        self.init_calcule_amperage_batterie()
+        self.choix_courant_Decharge_max = 30
+        self.run_enrichissement_dataframe()
     
-    def calcule_amperage_batterie(self):
-         self.choix_amperage_batterie = ceil(self.utilisateur_capaciter/self.choix_voltage)
+    def init_calcule_amperage_batterie(self):
+         self.choix_amperage_batterie = ceil(self.choix_capaciter_w/self.choix_voltage)
         
-    def conv_col_str_to_int(self):
-        index_prix_quantiter_str =  self.dataframe.columns
+    def index_str_to_int(self,df):
+        index_prix_quantiter_int = []
+        index_prix_quantiter_str =  df.index
         for index in index_prix_quantiter_str:
             try:
-                self.index_prix_quantiter_int.append(int(index))
+                index_prix_quantiter_int.append(int(index))
             except:
                 None
-        self.index_prix_quantiter_int.sort()
+        index_prix_quantiter_int.sort()
+        return index_prix_quantiter_int
 
     def conv_col_int_to_str(list_int):
         liste_str = []
@@ -205,9 +217,60 @@ class NkonEnrichissementData:
         return liste_str
 
     def run_enrichissement_dataframe(self):
-        print(self.index_prix_quantiter_int)
-        print(self.choix_voltage,self.choix_amperage_batterie,self.choix_courant_Decharge_max)
-        print(type(self.choix_amperage_batterie))
-        self.dataframe = self.dataframe["capaciter_ah"].apply(lambda capaciter_ah: ceil(self.choix_amperage_batterie/capaciter_ah))
-        self.dataframe["nb_serie"] = self.dataframe["Tension nominale"].apply(lambda tension_nominal: round(self.choix_voltage/tension_nominal))
+        # print(self.index_prix_quantiter_int)
+        # print(self.choix_voltage,self.choix_amperage_batterie,self.choix_courant_Decharge_max)
+        # print(type(self.choix_amperage_batterie))
+        self.dataframe["nb_parallele"] = self.dataframe["capaciter_ah"].apply(lambda capaciter_ah: ceil(self.choix_amperage_batterie/capaciter_ah))
+        self.dataframe["nb_serie"] = self.dataframe["Tension_nominale"].apply(lambda tension_nominal: round(self.choix_voltage /tension_nominal))
+        self.dataframe["tension_nominale_total"] = self.dataframe["nb_serie"]*self.dataframe["Tension_nominale"]
+        self.dataframe["capaciter_total"] =self.dataframe["tension_nominale_total"]*self.choix_amperage_batterie
         self.dataframe["nb_cellule"] = self.dataframe["nb_parallele"]*self.dataframe["nb_serie"]
+        self.prix_calculator()
+        
+    def detectors_quantiter_reduction(self,cellule):
+        index_ligne = self.index_str_to_int(cellule)
+        print("salut:",len(index_ligne))
+        nombre_cellule = cellule["nb_cellule"]
+        int_index_quantiter_eligible = 0
+        str_index_quantiter_eligible = "prix_regulier"
+        if len(index_ligne) == 1:
+            if index_ligne < nombre_cellule:
+                    str_index_quantiter_eligible = str(index_ligne[0])
+                    return str_index_quantiter_eligible
+        else:
+            for i in index_ligne:
+                if i < nombre_cellule:
+                    int_index_quantiter_eligible = i
+                else:
+                    str_index_quantiter_eligible = str(int_index_quantiter_eligible)
+                    if str_index_quantiter_eligible == "0":
+                        print(index_ligne)
+                        str_index_quantiter_eligible = "prix_regulier"
+        return str_index_quantiter_eligible
+
+    def prix_calculator(self):
+        tour_de_boucle = 0
+        self.dataframe["prix_total"] = 0
+        self.dataframe["reduction"] = False
+        for i in range(len(self.dataframe)):
+            print(tour_de_boucle)
+            tour_de_boucle +=1
+            cellule =  self.dataframe.loc[i]
+            print(isinstance(cellule, pd.Series))
+            cellule.index
+            cellule =  self.dataframe.loc[i][self.dataframe.loc[i].notna()]
+            index_valide = self.detectors_quantiter_reduction(cellule)
+            print("index valide:",index_valide)
+            self.dataframe["prix_total"].loc[i] = self.dataframe[index_valide].loc[i]*self.dataframe["nb_cellule"].loc[i]
+            if index_valide != "prix_regulier":
+                self.dataframe["reduction"].loc[i] = True
+
+
+
+      
+class interface_utilisateur(NkonEnrichissementData):
+    
+    def run_streamlit(self):
+        st.title("Tableaux")
+        st.dataframe(self.dataframe)
+        

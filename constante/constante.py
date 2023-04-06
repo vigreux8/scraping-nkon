@@ -1,20 +1,26 @@
 from os import path
 
-class SpecBatterie:
-    VOLTAGE_NOMINAL = 3,6
+class get_Parametre_par_defaut:
+     D_EXPORTATION = "exporter"
+     F_NOM_DEFAUT = "default.csv"
+     elec_VOLTAGE = 48
+     elec_PUISSANCE = 800
+    
+class get_SpecBatterie:
+    VOLTAGE_NOMINAL = 3.6
     #VOLTAGE CONVENTIONNEL  = 36,48,52v
 
-class ConstUrl():
+class get_ConstUrl():
     NKON_18650 = "https://www.nkon.nl/fr/rechargeable/li-ion/18650-size/show/150.html"
     NKON_21700 = "https://www.nkon.nl/fr/rechargeable/li-ion/21700-20700-size.html"
 
-class ConstClassPage_principal():
+class get_ConstClassPage_principal():
     LIST_PRODUIT  = ("div",{"class":"category-products"})
     PRODUIT_UNITER_INFO = ("h2",{"class":"product-name"})
     
     
 #les get sont dans l'ordre du scraping
-class ConstClassPage_produit():
+class get_ConstClassPage_produit():
         NOM_PRODUIT = ("div",{"class":"product-name"})
         TABLEAUX_RIGHT = ("div",{"class":"shop-content-right"})
         DISPONIBILITER_EN_STOCK = ("p",{"class":"availability out-of-stock"})
@@ -26,5 +32,5 @@ class ConstClassPage_produit():
         ALL_DESCRIPTION_produit = ("tr")
         LABELS_FLOAT = ("Diamètre - mm","Poids - g","Taille de la batterie","Courant de décharge - A")
 
-class PatchFile:
-    cellule_18650 = path.join("exporter","fichier_18650_Nkon.csv")
+class get_PatchFile:
+    cellule_18650 = path.join(get_Parametre_par_defaut.D_EXPORTATION,get_Parametre_par_defaut.F_NOM_DEFAUT)
