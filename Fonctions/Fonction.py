@@ -1,13 +1,19 @@
-from constante import constante_scrapeur
+from constante.constante_scrapeur import (
+    PatchFile,
+    ConstClassPage_principal,
+    ConstClassPage_produit,
+    ConstUrl
+    )
 from os import path,listdir
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
+from math import ceil
 class FonctionsScrapeur():
     def __init__(self) -> None:
-        self.CONSTANTE_PAGE_PRODUIT = constante_scrapeur.ConstClassPage_produit
-        self.CONSTANTE_PAGE_PRINCIPAL = constante_scrapeur.ConstClassPage_principal
-        self.CONSTANTE_URL = constante_scrapeur.ConstUrl
+        self.CONSTANTE_PAGE_PRODUIT = ConstClassPage_produit
+        self.CONSTANTE_PAGE_PRINCIPAL = ConstClassPage_principal
+        self.CONSTANTE_URL = ConstUrl
         
     
     
@@ -172,16 +178,16 @@ class NkonEnrichissementData:
     def __init__(self) -> None:
         self.index_prix_quantiter_int = []
         self.dataframe = pd.read_csv(PatchFile.cellule_18650)
-        self.utilisateur_voltage = 48
-        self.capaciter_w = 1200
-        self.utilisateur_courant_de_decharge_max = 30
-        self.amperage_batterie = None
+        self.choix_voltage = 48
+        self.choix_capaciter_w = 1200
+        self.choix_courant_Decharge_max = 30
+        self.choix_amperage_batterie = None
         self.calcule_amperage_batterie()
         self.conv_col_str_to_int()
         VOLTAGE_NOMINAL = 3,6
     
     def calcule_amperage_batterie(self):
-         self.amperage_batterie = ceil(self.utilisateur_capaciter/self.utilisateur_voltage)
+         self.choix_amperage_batterie = ceil(self.utilisateur_capaciter/self.choix_voltage)
         
     def conv_col_str_to_int(self):
         index_prix_quantiter_str =  self.dataframe.columns
@@ -199,3 +205,9 @@ class NkonEnrichissementData:
         return liste_str
 
     def run_enrichissement_dataframe(self):
+        print(self.index_prix_quantiter_int)
+        print(self.choix_voltage,self.choix_amperage_batterie,self.choix_courant_Decharge_max)
+        print(type(self.choix_amperage_batterie))
+        self.dataframe = self.dataframe["capaciter_ah"].apply(lambda capaciter_ah: ceil(self.choix_amperage_batterie/capaciter_ah))
+        self.dataframe["nb_serie"] = self.dataframe["Tension nominale"].apply(lambda tension_nominal: round(self.choix_voltage/tension_nominal))
+        self.dataframe["nb_cellule"] = self.dataframe["nb_parallele"]*self.dataframe["nb_serie"]
