@@ -1,3 +1,9 @@
+from os import path
+
+class SpecBatterie:
+    VOLTAGE_NOMINAL = 3,6
+    #VOLTAGE CONVENTIONNEL  = 36,48,52v
+
 class ConstUrl():
     NKON_18650 = "https://www.nkon.nl/fr/rechargeable/li-ion/18650-size/show/150.html"
     NKON_21700 = "https://www.nkon.nl/fr/rechargeable/li-ion/21700-20700-size.html"
@@ -19,3 +25,6 @@ class ConstClassPage_produit():
         TABLEAUX_DESCRIPTION_PRODUIT = ("table",{"class":"data-table"})
         ALL_DESCRIPTION_produit = ("tr")
         LABELS_FLOAT = ("Diamètre - mm","Poids - g","Taille de la batterie","Courant de décharge - A")
+
+class PatchFile:
+    cellule_18650 = path.join("exporter","fichier_18650_Nkon.csv")

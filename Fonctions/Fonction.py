@@ -166,4 +166,36 @@ class RunScrapingNkon():
         self.get_page_principale_produit()
         self.tableaux_cellule.to_csv()
         self.export_csv()
-   
+
+
+class NkonEnrichissementData:
+    def __init__(self) -> None:
+        self.index_prix_quantiter_int = []
+        self.dataframe = pd.read_csv(PatchFile.cellule_18650)
+        self.utilisateur_voltage = 48
+        self.capaciter_w = 1200
+        self.utilisateur_courant_de_decharge_max = 30
+        self.amperage_batterie = None
+        self.calcule_amperage_batterie()
+        self.conv_col_str_to_int()
+        VOLTAGE_NOMINAL = 3,6
+    
+    def calcule_amperage_batterie(self):
+         self.amperage_batterie = ceil(self.utilisateur_capaciter/self.utilisateur_voltage)
+        
+    def conv_col_str_to_int(self):
+        index_prix_quantiter_str =  self.dataframe.columns
+        for index in index_prix_quantiter_str:
+            try:
+                self.index_prix_quantiter_int.append(int(index))
+            except:
+                None
+        self.index_prix_quantiter_int.sort()
+
+    def conv_col_int_to_str(list_int):
+        liste_str = []
+        for element in list_int:
+            liste_str.append(str(element))
+        return liste_str
+
+    def run_enrichissement_dataframe(self):
