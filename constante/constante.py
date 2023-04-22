@@ -3,7 +3,7 @@ from os import path
 class get_Parametre_par_defaut:
      D_EXPORTATION = "exporter"
      F_NOM_DEFAUT = "default.csv"
-     elec_VOLTAGE = 48
+     elec_VOLTAGE = 48.0
      elec_PUISSANCE = 800
     
 class get_SpecBatterie:

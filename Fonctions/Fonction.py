@@ -13,28 +13,23 @@ from math import ceil
 import streamlit as st
 
 
-
 class FonctionsScrapeur():
     def __init__(self) -> None:
         self.CONSTANTE_PAGE_PRODUIT = get_ConstClassPage_produit
         self.CONSTANTE_PAGE_PRINCIPAL = get_ConstClassPage_principal
         self.CONSTANTE_URL = get_ConstUrl
-        
-    
-    
+         
 class gestion_de_fichier:
     def __init__(self) -> None:
         self.nom_present_dossier_exporter = self.init_recuperation_list_fichier()
         self.fichier_present_exporter = self.init_recuperation_list_fichier()
-        
-        
+             
     def init_recuperation_list_fichier(self):
         listdir(get_Parametre_par_defaut.D_EXPORTATION)
         
     def Patch_constructeur(self):
         path.join(get_Parametre_par_defaut.D_EXPORTATION,self.fichier_present_exporter)
         
-
 class RunScrapingNkon():
     def __init__(self) -> None:
         self.fonction = FonctionsScrapeur()
@@ -188,17 +183,71 @@ class NkonEnrichissementData:
         self.index_ligne = []
         self.index_reduction_on =[]
         self.index_prix_quantiter_int = []
-        self.dataframe = pd.read_csv(get_PatchFile.cellule_18650)
-        self.choix_voltage = st.slider("voltage",round(get_SpecBatterie.VOLTAGE_NOMINAL),200,on_change=self.run_enrichissement_dataframe,value=get_Parametre_par_defaut.elec_VOLTAGE)
-        self.choix_capaciter_w = st.slider("watt",0,5000,value=get_Parametre_par_defaut.elec_PUISSANCE,on_change=self.run_enrichissement_dataframe)
-        self.limite_surface_cm_carres = st.text_input("limite en cm²")
+        self.df_enrichie = None
+        self.choix_voltage = None
+        self.choix_capaciter_w = None
+        self.choix_limite_surface_cm_carres = None
+        self.choix_limite_ah_max_min = None
+        self.choix_limite_nb_pile = None
+        self.init_streamlit_composant()
+        self.df_origine = pd.read_csv(get_PatchFile.cellule_18650)
         self.init_calcule_amperage_batterie()
         self.choix_courant_Decharge_max = 30
-        self.run_enrichissement_dataframe()
+        self.add_enrichissement_dataframe()
+        self.filtre()
+    
+    def filtre(self):
+        self.df_enrichie = self.df_origine[["reduction","prix_total","nb_cellule","Ah_max","poids_kg","tension_nominale_total","nb_parallele","nb_serie","nom","liens"]].copy()
+        self.df_enrichie = self.df_enrichie.dropna(subset="prix_total")
+        save = self.df_enrichie.copy()
+        
+        
+        if self.filtre_actif(self.choix_limite_nb_pile):
+            self.df_enrichie = self.df_enrichie.drop(self.df_enrichie[self.df_enrichie["nb_cellule"] > self.choix_limite_nb_pile].index)
+            if self.df_enrichie.shape[0] == 0:
+                id_min = save["nb_cellule"].idxmin()
+                st.write(id_min)
+                valeur_minimum = save.loc[id_min,"nb_cellule"]
+                st.write(f"le nombre de cellule minimum et de {valeur_minimum}")
+            
+    def filtre_avancer(self,df_save,nom_colonne,phrase):
+          
     
     def init_calcule_amperage_batterie(self):
          self.choix_amperage_batterie = ceil(self.choix_capaciter_w/self.choix_voltage)
+   
+    def supression_filtre(self,nom_colonne,limite,):
+        pass
         
+    @staticmethod
+    def filtre_actif(filtre):
+        if filtre == 0:
+            return False
+        else : 
+            return True
+   
+    def init_streamlit_composant(self):
+        self.choix_voltage =  st.slider(
+            "voltage",
+            get_SpecBatterie.VOLTAGE_NOMINAL,
+            200.0,
+            on_change=self.add_enrichissement_dataframe,
+            value=get_Parametre_par_defaut.elec_VOLTAGE,
+            step=1.0)
+
+        self.choix_capaciter_w=  st.slider(
+            "watt",
+            0,
+            5000,
+            value=get_Parametre_par_defaut.elec_PUISSANCE,
+            on_change=self.add_enrichissement_dataframe)
+        
+        self.choix_limite_surface_cm_carres = st.number_input("limite en cm²",step=1)
+        self.choix_limite_ah_max_min = st.number_input("Puissance minimum",step=1)
+        self.choix_limite_nb_pile = st.number_input("Pile maximum",step=1)
+        
+        
+                     
     def index_str_to_int(self,df):
         index_prix_quantiter_int = []
         index_prix_quantiter_str =  df.index
@@ -215,18 +264,21 @@ class NkonEnrichissementData:
         for element in list_int:
             liste_str.append(str(element))
         return liste_str
-
-    def run_enrichissement_dataframe(self):
+    
+    def add_enrichissement_dataframe(self):
         # print(self.index_prix_quantiter_int)
         # print(self.choix_voltage,self.choix_amperage_batterie,self.choix_courant_Decharge_max)
         # print(type(self.choix_amperage_batterie))
-        self.dataframe["nb_parallele"] = self.dataframe["capaciter_ah"].apply(lambda capaciter_ah: ceil(self.choix_amperage_batterie/capaciter_ah))
-        self.dataframe["nb_serie"] = self.dataframe["Tension_nominale"].apply(lambda tension_nominal: round(self.choix_voltage /tension_nominal))
-        self.dataframe["tension_nominale_total"] = self.dataframe["nb_serie"]*self.dataframe["Tension_nominale"]
-        self.dataframe["capaciter_total"] =self.dataframe["tension_nominale_total"]*self.choix_amperage_batterie
-        self.dataframe["nb_cellule"] = self.dataframe["nb_parallele"]*self.dataframe["nb_serie"]
-        self.prix_calculator()
+        self.df_origine["nb_parallele"] = self.df_origine["capaciter_ah"].apply(lambda capaciter_ah: ceil(self.choix_amperage_batterie/capaciter_ah))
+        self.df_origine["nb_serie"] = self.df_origine["Tension_nominale"].apply(lambda tension_nominal: round(self.choix_voltage /tension_nominal))
+        self.df_origine["tension_nominale_total"] = self.df_origine["nb_serie"]*self.df_origine["Tension_nominale"]
+        self.df_origine["capaciter_total"] =self.df_origine["tension_nominale_total"]*self.choix_amperage_batterie
+        self.df_origine["nb_cellule"] = self.df_origine["nb_parallele"]*self.df_origine["nb_serie"]
+        self.df_origine["poids_kg"] = (self.df_origine["nb_cellule"]*self.df_origine["Poids - g"])/1000
+        self.df_origine["Ah_max"] = self.df_origine["Courant de décharge - A"]*self.df_origine["nb_parallele"]
         
+        self.prix_calculator()
+    
     def detectors_quantiter_reduction(self,cellule):
         index_ligne = self.index_str_to_int(cellule)
         print("salut:",len(index_ligne))
@@ -247,30 +299,32 @@ class NkonEnrichissementData:
                         print(index_ligne)
                         str_index_quantiter_eligible = "prix_regulier"
         return str_index_quantiter_eligible
-
+    
     def prix_calculator(self):
         tour_de_boucle = 0
-        self.dataframe["prix_total"] = 0
-        self.dataframe["reduction"] = False
-        for i in range(len(self.dataframe)):
+        self.df_origine["prix_total"] = 0
+        self.df_origine["reduction"] = False
+        for i in range(len(self.df_origine)):
             print(tour_de_boucle)
             tour_de_boucle +=1
-            cellule =  self.dataframe.loc[i]
+            cellule =  self.df_origine.loc[i]
             print(isinstance(cellule, pd.Series))
             cellule.index
-            cellule =  self.dataframe.loc[i][self.dataframe.loc[i].notna()]
+            cellule =  self.df_origine.loc[i][self.df_origine.loc[i].notna()]
             index_valide = self.detectors_quantiter_reduction(cellule)
             print("index valide:",index_valide)
-            self.dataframe["prix_total"].loc[i] = self.dataframe[index_valide].loc[i]*self.dataframe["nb_cellule"].loc[i]
+            self.df_origine["prix_total"].loc[i] = self.df_origine[index_valide].loc[i]*self.df_origine["nb_cellule"].loc[i]
             if index_valide != "prix_regulier":
-                self.dataframe["reduction"].loc[i] = True
+                self.df_origine["reduction"].loc[i] = True
+    
+    def new_dataframe(self):
+        
+        pass
 
 
-
-      
 class interface_utilisateur(NkonEnrichissementData):
     
     def run_streamlit(self):
-        st.title("Tableaux")
-        st.dataframe(self.dataframe)
-        
+        st.title("Tableaux cellule lithium")
+        st.dataframe(self.df_enrichie)
+        st.write(self.df_origine.columns)
