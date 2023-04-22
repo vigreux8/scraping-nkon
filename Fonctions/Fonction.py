@@ -199,29 +199,34 @@ class NkonEnrichissementData:
     def filtre(self):
         self.df_enrichie = self.df_origine[["reduction","prix_total","nb_cellule","Ah_max","poids_kg","tension_nominale_total","nb_parallele","nb_serie","nom","liens"]].copy()
         self.df_enrichie = self.df_enrichie.dropna(subset="prix_total")
-        save = self.df_enrichie.copy()
+        self.filtre_avancer(self.df_enrichie,"nb_cellule",self.choix_limite_nb_pile,"le nombre de cellule minimum et de")
+        self.filtre_avancer(self.df_enrichie,"Ah_max",self.choix_limite_ah_max_min,"la capaciter minimum en ah possible est de",limite_superieur=False)
         
         
-        if self.filtre_actif(self.choix_limite_nb_pile):
-            self.df_enrichie = self.df_enrichie.drop(self.df_enrichie[self.df_enrichie["nb_cellule"] > self.choix_limite_nb_pile].index)
+        
+        
+    def filtre_avancer(self,df_save,nom_colonne,limite,phrase,limite_superieur=True):
+        df_save = df_save.copy()
+        if self.filtre_actif(limite):
+            if limite_superieur:
+                self.df_enrichie = self.df_enrichie.drop(self.df_enrichie[self.df_enrichie[nom_colonne] > limite].index)
+            else : 
+                self.df_enrichie = self.df_enrichie.drop(self.df_enrichie[self.df_enrichie[nom_colonne] < limite].index)
+                
             if self.df_enrichie.shape[0] == 0:
-                id_min = save["nb_cellule"].idxmin()
+                id_min = df_save[nom_colonne].idxmin()
                 st.write(id_min)
-                valeur_minimum = save.loc[id_min,"nb_cellule"]
-                st.write(f"le nombre de cellule minimum et de {valeur_minimum}")
+                valeur_minimum = df_save.loc[id_min,nom_colonne]
+                st.write(f"{phrase} {valeur_minimum}")
             
-    def filtre_avancer(self,df_save,nom_colonne,phrase):
-          
     
     def init_calcule_amperage_batterie(self):
          self.choix_amperage_batterie = ceil(self.choix_capaciter_w/self.choix_voltage)
    
-    def supression_filtre(self,nom_colonne,limite,):
-        pass
-        
+
     @staticmethod
     def filtre_actif(filtre):
-        if filtre == 0:
+        if filtre == 0 :
             return False
         else : 
             return True
@@ -243,7 +248,7 @@ class NkonEnrichissementData:
             on_change=self.add_enrichissement_dataframe)
         
         self.choix_limite_surface_cm_carres = st.number_input("limite en cm²",step=1)
-        self.choix_limite_ah_max_min = st.number_input("Puissance minimum",step=1)
+        self.choix_limite_ah_max_min = st.number_input("Puissance AH minimum",step=1)
         self.choix_limite_nb_pile = st.number_input("Pile maximum",step=1)
         
         
